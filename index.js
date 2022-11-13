@@ -25,38 +25,32 @@ const server = http.createServer(function (req, res) {
   });
   req.on("end", function () {
     buffer += decoder.end();
-    res.end("Hello world\n");
-    console.log("payload_____", buffer);
-  });
-  //choose the handler this request should go
-  let chooseHandler =
-    typeof router[trimmedPath] !== undefined
-      ? router[trimmedPath]
-      : handlers.notFound;
+    //choose the handler this request should go to not found handler
+    let chooseHandler;
+    if (trimmedPath == "sample") {
+      chooseHandler = router[trimmedPath];
+    } else {
+      chooseHandler = router["notFound"];
+    }
+    const data = {
+      trimmedPath,
+      method,
+      headers,
+      payload: buffer,
+    };
+    chooseHandler(data, function (statusCode, payload) {
+      statusCode = typeof statusCode == "number" && 200;
+      //payload
+      payload = typeof payload == "object" ? payload : "hiii";
+      const payloadString=JSON.stringify(payload);
+      //return the response
+      res.writeHead(statusCode);
+      console.log(statusCode, payload, "buffer__Text");
+      res.end(payloadString);
+    });
 
-  //contruct the data object to send to the handler
-  let data = {
-    trimmedPath: trimmedPath,
-    queryStringObject: queryString,
-    method: method,
-    headers: headers,
-    payload: buffer,
-  };
-
-  //route the request to the handler into the router
-  chooseHandler(data, function (statusCode, payload) {
-    //use the status code called back by the handler default 200
-    statusCode = typeof statusCode == "number" ? statusCode : 200;
-    //use the payload callback back by the handler
-    payload = typeof payload == "object" ? payload : {};
-    //convert the payload into string
-    let payloadString = JSON.stringify(payload);
-    //return the response
-    res.writeHead(statusCode);
-    res.end(payloadString);
-
-    //console
-    console.log("Returning this response", statusCode.payloadString);
+    //route the request to the handler to matching the
+    console.log(chooseHandler);
   });
 });
 
@@ -66,18 +60,18 @@ server.listen(3000, function () {
 
 //define handlers
 let handlers = {};
-//sample handler
+//sample Handler
 handlers.sample = function (data, callback) {
-  //callback http status code & payload =="object"
-  callback(406, { name: "sample handler" });
+  callback(406, { name: "myname is sample handler" });
 };
-
 //not found handler
 handlers.notFound = function (data, callback) {
-  callback(404);
+  //callback http status code and payload object
+  callback(404, { name: "not found sorry" });
 };
 
-//define a request router
-var router = {
+//define a router
+let router = {
   sample: handlers.sample,
+  notFound: handlers.notFound,
 };
